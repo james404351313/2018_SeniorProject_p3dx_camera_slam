@@ -1,0 +1,57 @@
+<launch>
+
+  <arg name="IS_TWISTSTAMPED" default="true" />
+  <arg name="use_rviz" default="true" />
+  <arg name="publish_covariance" default="false"/>
+
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser"
+    args="0.0 0.0 0.0 0.0 0.0 0.0 base_link laser 100" />
+
+<node pkg="tf" type="static_transform_publisher" name="base_link_to_scan"
+    args="0.15 0.0 0.0 0.0 0.0 0.0 base_link scan 100" />
+
+  <node pkg="urg_node" type="urg_node" name="urg_node" output="screen">
+  </node>
+
+  <group if="$(arg publish_covariance)">
+    <param name="laser_scan_matcher_node/do_compute_covariance" value="1"/>
+    <param name="laser_scan_matcher_node/publish_pose_with_covariance" value="true"/>
+    <param name="laser_scan_matcher_node/publish_pose_with_covariance_stamped" value="true"/>
+  </group>
+  <node pkg="laser_scan_matcher" type="laser_scan_matcher_node"
+    name="laser_scan_matcher_node" output="screen">
+    <param name="publish_covariance" value="false"/>
+    <param name="fixed_frame" value = "odom"/>
+    <param name="max_iterations" value="10"/>
+  </node>
+
+
+   <master auto="start"/>
+ <!-- Run the map server --> 
+    <arg name="map_file" default="$(find navigation)/map/map.yaml"/>
+    <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+
+ <!--- Run AMCL --> 
+    <node pkg="amcl" type="amcl" name="amcl" output="screen">
+    <param name="odom_frame_id" value="odom"/>
+    <param name="odom_model_type" value="diff-corrected"/>
+    <param name="base_frame_id" value="base_link"/>
+    <param name="max_particles" value="5000"/>
+    <param name="odom_alpha1" value="0"/>
+    <param name="odom_alpha2" value="0"/>
+    <param name="odom_alpha3" value="0"/>
+     <param name="odom_alpha4" value="0"/>
+     <param name="tf_broadcast" value="true"/>
+    <param name="update_min_d" value="0.02"/>
+    <param name="update_min_a" value="0.5"/>tf_broadcast
+    </node>
+
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <rosparam file="$(find navigation)/cfg/costmap_common_params.yaml" command="load" ns="global_costmap" /> 
+    <rosparam file="$(find navigation)/cfg/costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find navigation)/cfg/local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find navigation)/cfg/global_costmap_params.yaml" command="load" /> 
+    <rosparam file="$(find navigation)/cfg/base_local_planner_params.yaml" command="load" />
+ </node>
+
+</launch> 
